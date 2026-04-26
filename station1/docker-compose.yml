@@ -1,0 +1,28 @@
+version: "3.9"
+
+services:
+  station1:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bioshield-station1
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persist HuggingFace model cache across container restarts
+      # (~2.5 GB download on first run, then cached)
+      - hf_cache:/root/.cache/huggingface
+      # Persist generated .npy embedding files on the host
+      - ./outputs:/app/outputs
+    environment:
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface
+    # Model loading + first inference can take 30-60s on CPU
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; r=httpx.get('http://localhost:8000/health'); assert r.status_code==200"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+
+volumes:
+  hf_cache:
